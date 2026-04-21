@@ -8,28 +8,63 @@ pipeline {
   }
 
   stages {
+
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
     stage('Build') {
       steps {
-        echo 'Building..'
-        sh '''
-          ls -l
-          gcc main.c -o main
-        '''
+        sh 'gcc main.c -o main'
       }
     }
 
     stage('Test') {
       steps {
-        echo 'Testing..'
+        sh './main'
+      }
+    }
+
+    stage('Docker Build') {
+      steps {
+        sh 'docker build -t myimage .'
+      }
+    }
+
+    stage('Push Image') {
+      steps {
+        withCredentials([usernamePassword(
+          credentialsId: 'dockerhub-creds',
+          usernameVariable: 'DOCKER_USER',
+          passwordVariable: 'DOCKER_PASS'
+        )]) {
+          sh '''
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+            docker tag myimage $DOCKER_USER/myimage:${BUILD_NUMBER}
+            docker push $DOCKER_USER/myimage:${BUILD_NUMBER}
+          '''
+        }
+      }
+    }
+
+    stage('Deploy') {
+      steps {
         sh '''
-          ./main
+          docker stop myapp || true
+          docker rm myapp || true
+
+          docker run -it \
+            --name myapp \
+            $DOCKER_USER/myimage:${BUILD_NUMBER}
         '''
       }
     }
 
     stage('Deliver') {
       steps {
-        echo 'Delivering..'
         sh '''
           mkdir -p output/
           cp main output/
@@ -44,7 +79,7 @@ pipeline {
       echo 'Pipeline completed successfully!'
     }
     failure {
-      echo 'Pipeline failed!'
+      echo 'Pipeline failed'
     }
     always {
       cleanWs()
