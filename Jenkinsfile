@@ -27,6 +27,12 @@ pipeline {
       }
     }
 
+  stage('Test Docker') {
+      steps {
+        sh 'docker ps'
+      }
+    }
+
     stage('Docker Build') {
       steps {
         sh 'docker build -t myimage .'
