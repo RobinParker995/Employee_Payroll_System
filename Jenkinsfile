@@ -27,7 +27,7 @@ pipeline {
       }
     }
 
-  stage('Test Docker') {
+    stage('Test Docker') {
       steps {
         sh 'docker ps'
       }
@@ -35,7 +35,9 @@ pipeline {
 
     stage('Docker Build') {
       steps {
-        sh 'docker build -t myimage .'
+        sh '''
+          docker build -t robinparker995/employee_payroll_system:${BUILD_NUMBER} .
+        '''
       }
     }
 
@@ -49,8 +51,7 @@ pipeline {
           sh '''
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
 
-            docker tag myimage $DOCKER_USER/myimage:${BUILD_NUMBER}
-            docker push $DOCKER_USER/myimage:${BUILD_NUMBER}
+            docker push robinparker995/employee_payroll_system:${BUILD_NUMBER}
           '''
         }
       }
@@ -62,9 +63,9 @@ pipeline {
           docker stop myapp || true
           docker rm myapp || true
 
-          docker run -it \
+          docker run -d \
             --name myapp \
-            $DOCKER_USER/myimage:${BUILD_NUMBER}
+            robinparker995/employee_payroll_system:${BUILD_NUMBER}
         '''
       }
     }
